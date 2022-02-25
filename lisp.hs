@@ -5,7 +5,7 @@ import Data.Maybe (fromJust)
 data LispExpr = Symbol String
                 | Number Integer
                 | List   [LispExpr]
-                | Bool   Bool
+                | LBool   Bool
                 | Func   LispFunc
                 | Cons   LispExpr LispExpr
                 | Null
@@ -33,7 +33,7 @@ extractNum (Number s) = Just s
 extractNum _          = Nothing
 
 extractBool :: LispExpr -> Maybe Bool
-extractBool (Bool s) = Just s
+extractBool (LBool s) = Just s
 extractBool _        = Nothing
 
 
@@ -64,13 +64,17 @@ defaultEnv = [ HashMap.fromList
 -- ** eval stuff **
 
 applyPrimitive :: String -> [LispExpr] -> Maybe LispExpr
-applyPrimitive "+" args = sequence (map extractNum args) >>= Just . Number . sum
-applyPrimitive "cons" args = if length args == 2
-                                then Just $ Cons (head args) (head $ tail args)
-                                else Nothing
-applyPrimitive "eq?" args = if length args == 2
-                               then Just $ Bool $ (head args) == (head $ tail args)
-                               else Nothing
+applyPrimitive name args =
+    case name of
+      "+" -> sequence (map extractNum args) >>= Just . Number . sum
+      "eq?" -> ifArgc (==2) $ LBool $ (args !! 0) == (args !! 1)
+      "cons" -> ifArgc (==2) $ Cons (args !! 0) (args !! 1)
+  where
+      ifArgc :: (Int -> Bool) -> LispExpr -> Maybe LispExpr
+      ifArgc pred res = if (pred (length args))
+                           then Just $ res
+                           else Nothing
+
 
 applyFunc :: LispFunc -> [LispExpr] -> LispEnv -> Maybe LispExpr
 applyFunc (PrimitiveFunc name)     args env = applyPrimitive name args
