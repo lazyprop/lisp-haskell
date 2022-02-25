@@ -3,13 +3,13 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromJust)
 
 data LispExpr = Symbol String
-                | Number Integer
-                | List   [LispExpr]
-                | LBool   Bool
-                | Func   LispFunc
-                | Cons   LispExpr LispExpr
-                | Null
-                deriving (Show, Eq)
+              | Number Integer
+              | List   [LispExpr]
+              | LBool   Bool
+              | Func   LispFunc
+              | Cons   LispExpr LispExpr
+              | Null
+              deriving (Show, Eq)
 
 data LispFunc = LispFunc [LispExpr] [LispExpr] -- params, body
               | PrimitiveFunc String
