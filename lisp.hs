@@ -57,6 +57,7 @@ defaultEnv = [HashMap.fromList $ map primitiveFromName
                 , "cons", "null", "eq?", "null?"
                 ]]
 
+
 -- ** eval stuff **
 
 applyPrimitive :: String -> [LispExpr] -> Maybe LispExpr
@@ -64,19 +65,25 @@ applyPrimitive name args =
     case name of
       "+" -> sequence (map extractNum args) >>= Just . Number . sum
       "*" -> sequence (map extractNum args) >>= Just . Number . product
-      "-" -> undefined
+      "-" -> getTwoNums >>= \(l, r) -> Just . Number $ l - r
       "eq?" -> ifArgc (==2) $ LBool $ (args !! 0) == (args !! 1)
       "cons" -> ifArgc (==2) $ Cons (args !! 0) (args !! 1)
-      "<" -> undefined
-      "<=" -> undefined
-      ">" -> undefined
-      ">=" -> undefined
+      "<" -> getTwoNums >>= \(l, r) -> Just . LBool $ l < r
+      "<=" -> getTwoNums >>= \(l, r) -> Just . LBool $ l <= r
+      ">" -> getTwoNums >>= \(l, r) -> Just . LBool $ l > r
+      ">=" -> getTwoNums >>= \(l, r) -> Just . LBool $ l >= r
       "null?" -> ifArgc (==1) $ LBool (head args == Null)
   where
       ifArgc :: (Int -> Bool) -> LispExpr -> Maybe LispExpr
       ifArgc pred res = if (pred (length args))
-                           then Just $ res
+                           then Just res
                            else Nothing
+
+      getTwoNums :: Maybe (Integer, Integer)
+      getTwoNums = if (length args == 2)
+                      then sequence (map extractNum args) >>=
+                          \[l, r] -> Just (l, r)
+                      else Nothing
 
 
 applyFunc :: LispFunc -> [LispExpr] -> LispEnv -> Maybe LispExpr
