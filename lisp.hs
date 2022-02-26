@@ -46,20 +46,16 @@ findEnv (top:rest) name = case (top !? name) of
                             Nothing -> findEnv rest name
                             Just expr -> Just expr
 
+
+primitiveFromName :: String -> (String, LispExpr)
+primitiveFromName name = (name, Func (PrimitiveFunc name))
+
 defaultEnv :: LispEnv
-defaultEnv = [ HashMap.fromList
-                [ ("first"
-                  , Func (LispFunc [ Symbol "x" , Symbol "y" ]
-                                   [ Symbol "x" ]))
-                , ("second"
-                  , Func (LispFunc [ Symbol "x" , Symbol "y" ]
-                                   [ Symbol "y" ]))
-                , ("+", Func (PrimitiveFunc "+"))
-                , ("cons", Func (PrimitiveFunc "cons"))
-                , ("null", Func (PrimitiveFunc "null"))
-                , ("eq?", Func (PrimitiveFunc "eq?")) ] ]
-
-
+defaultEnv = [HashMap.fromList $ map primitiveFromName
+                [ "+", "*", "*", "-"
+                , "<", "<=", ">", ">="
+                , "cons", "null", "eq?", "null?"
+                ]]
 
 -- ** eval stuff **
 
@@ -67,8 +63,15 @@ applyPrimitive :: String -> [LispExpr] -> Maybe LispExpr
 applyPrimitive name args =
     case name of
       "+" -> sequence (map extractNum args) >>= Just . Number . sum
+      "*" -> sequence (map extractNum args) >>= Just . Number . product
+      "-" -> undefined
       "eq?" -> ifArgc (==2) $ LBool $ (args !! 0) == (args !! 1)
       "cons" -> ifArgc (==2) $ Cons (args !! 0) (args !! 1)
+      "<" -> undefined
+      "<=" -> undefined
+      ">" -> undefined
+      ">=" -> undefined
+      "null?" -> ifArgc (==1) $ LBool (head args == Null)
   where
       ifArgc :: (Int -> Bool) -> LispExpr -> Maybe LispExpr
       ifArgc pred res = if (pred (length args))
@@ -96,12 +99,9 @@ eval expr       _      = Just expr
 
 -- ** testing stuff ** 
 
-testExpr1 = List [Symbol "first", Number 1, Number 2]
-testExpr2 = List [Symbol "second", Number 3, Number 4]
-testExpr3 = List [Symbol "first", testExpr1, testExpr2]
-testExpr4 = List [Symbol "second", testExpr1, testExpr2]
-testExpr5 = List [Symbol "+", Number 1, Number 2]
-testExpr6 = List [Symbol "+", Number 1, Symbol "x"]  -- Nothing
-testExpr7 = List [Symbol "cons", Number 1, Number 2]
-testExpr8 = List [Symbol "eq?", Number 1, Number 1]
-testExpr9 = List [Symbol "eq?", Number 1, Number 2]
+testExpr1 = List [Symbol "+", Number 1, Number 2]
+testExpr2 = List [Symbol "+", Number 1, Symbol "x"]  -- Nothing
+testExpr3 = List [Symbol "cons", Number 1, Number 2]
+testExpr4 = List [Symbol "eq?", Number 1, Number 1]
+testExpr5 = List [Symbol "eq?", Number 1, Number 2]
+testExpr6 = List [Symbol "null?", Null]
