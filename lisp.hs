@@ -5,7 +5,7 @@ import Data.Maybe (fromJust)
 data LispExpr = Symbol String
               | Number Integer
               | List   [LispExpr]
-              | LBool   Bool
+              | LBool  Bool
               | Func   LispFunc
               | Cons   LispExpr LispExpr
               | Null
@@ -36,15 +36,19 @@ extractBool :: LispExpr -> Maybe Bool
 extractBool (LBool s) = Just s
 extractBool _        = Nothing
 
+extractCons :: LispExpr -> Maybe (LispExpr, LispExpr)
+extractCons (Cons l r) = Just (l, r)
+extractCons _          = Nothing
+
 
 
 -- ** environment stuff **
 
-findEnv :: LispEnv -> String -> Maybe LispExpr
-findEnv []         _    = Nothing
-findEnv (top:rest) name = case (top !? name) of
-                            Nothing -> findEnv rest name
-                            Just expr -> Just expr
+getEnv :: LispEnv -> String -> Maybe LispExpr
+getEnv []         _    = Nothing
+getEnv (top:rest) name = case (top !? name) of
+                           Nothing -> getEnv rest name
+                           Just expr -> Just expr
 
 
 primitiveFromName :: String -> (String, LispExpr)
@@ -53,8 +57,8 @@ primitiveFromName name = (name, Func (PrimitiveFunc name))
 defaultEnv :: LispEnv
 defaultEnv = [HashMap.fromList $ map primitiveFromName
                 [ "+", "*", "*", "-"
-                , "<", "<=", ">", ">="
-                , "cons", "null", "eq?", "null?"
+                , "<", "<=", ">", ">=", "eq?"
+                , "cons", "null", "null?", "car", "cdr"
                 ]]
 
 
@@ -63,16 +67,28 @@ defaultEnv = [HashMap.fromList $ map primitiveFromName
 applyPrimitive :: String -> [LispExpr] -> Maybe LispExpr
 applyPrimitive name args =
     case name of
+      -- arithmetic stuff
       "+" -> sequence (map extractNum args) >>= Just . Number . sum
       "*" -> sequence (map extractNum args) >>= Just . Number . product
       "-" -> getTwoNums >>= \(l, r) -> Just . Number $ l - r
       "eq?" -> ifArgc (==2) $ LBool $ (args !! 0) == (args !! 1)
-      "cons" -> ifArgc (==2) $ Cons (args !! 0) (args !! 1)
+      "=" -> getTwoNums >>= \(l, r) -> Just . LBool $ l == r
       "<" -> getTwoNums >>= \(l, r) -> Just . LBool $ l < r
       "<=" -> getTwoNums >>= \(l, r) -> Just . LBool $ l <= r
       ">" -> getTwoNums >>= \(l, r) -> Just . LBool $ l > r
       ">=" -> getTwoNums >>= \(l, r) -> Just . LBool $ l >= r
+
+      -- cons stuff
+      "cons" -> ifArgc (==2) $ Cons (args !! 0) (args !! 1)
+      "null" -> Just Null
       "null?" -> ifArgc (==1) $ LBool (head args == Null)
+      -- make this beautiful
+      "car" -> case args of
+                 [Cons l r] -> Just l
+                 _          -> Nothing
+      "cdr" -> case args of
+                 [Cons l r] -> Just r
+                 _          -> Nothing
   where
       ifArgc :: (Int -> Bool) -> LispExpr -> Maybe LispExpr
       ifArgc pred res = if (pred (length args))
@@ -100,15 +116,19 @@ eval (List (e:es)) env = do
     func <- extractFunc res
     args <- sequence $ map (flip eval env) es -- no need to eval in applyFunc
     applyFunc func args env
-eval (Symbol s) env    = findEnv env s
+eval (Symbol s) env    = getEnv env s
 eval expr       _      = Just expr
 
 
 -- ** testing stuff ** 
 
-testExpr1 = List [Symbol "+", Number 1, Number 2]
-testExpr2 = List [Symbol "+", Number 1, Symbol "x"]  -- Nothing
-testExpr3 = List [Symbol "cons", Number 1, Number 2]
-testExpr4 = List [Symbol "eq?", Number 1, Number 1]
-testExpr5 = List [Symbol "eq?", Number 1, Number 2]
-testExpr6 = List [Symbol "null?", Null]
+testExpr1  = List [Symbol "+", Number 1, Number 2]
+testExpr2  = List [Symbol "+", Number 1, Symbol "x"]  -- Nothing
+testExpr3  = List [Symbol "cons", Number 1, Number 2]
+testExpr4  = List [Symbol "eq?", Number 1, Number 1]
+testExpr5  = List [Symbol "null?", Null]
+testExpr6  = List [Symbol "car", testExpr3]
+testExpr7  = List [Symbol "cdr", testExpr3]
+testExpr8  = List [Symbol "=", Number 1, Number 1]
+testExpr9  = List [Symbol "eq?", Symbol "+", Symbol "+"]
+testExpr10 = List [Symbol "eq?", Symbol "f", Symbol "f"] -- Nothing
