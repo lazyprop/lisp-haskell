@@ -1,6 +1,7 @@
 import Data.HashMap.Strict (HashMap, (!?))
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromJust)
+import Control.Monad.State
 
 data LispExpr = Symbol String
               | Number Integer
@@ -16,7 +17,6 @@ data LispFunc = LispFunc [LispExpr] [LispExpr] -- params, body
               deriving (Show, Eq)
 
 type LispEnv = [HashMap String LispExpr]
-
 
 -- ** extract stuff **
 
